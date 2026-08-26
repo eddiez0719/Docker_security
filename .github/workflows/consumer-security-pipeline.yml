@@ -3,11 +3,10 @@ on:
   push:
     branches:
       - '*'
-    pull_request:
-      branches:
-        - 'main'
+  pull_request:
+    branches:
+      - 'main'
 jobs:
   security:
     uses: eddiez0719/shared-workflows/.github/workflows/reusable-security-pipeline.yml@demo/week3-security-scan
     secrets: inherit
-    
