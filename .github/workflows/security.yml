@@ -1,17 +1,44 @@
+# =============================================================================
+# CONSUMING WORKFLOW  (lives in the application repo: Docker_security)
+#
+# This file contains NO scanning logic at all. Every scanner — hadolint,
+# Bandit, Trivy, SonarQube — is defined once in the shared repo
+# (eddiez0719/shared-workflows). This repo just says "run that gate on my
+# code", so the whole file is 3 meaningful lines.
+# =============================================================================
+
+# The name shown in the GitHub "Actions" tab for this pipeline.
 name: security-pipeline
 
-# CONSUMING workflow — triggers only. The entire gate (hadolint -> Bandit ->
-# Trivy -> SonarQube) lives in eddiez0719/shared-workflows and this repo is
-# happy with its defaults, so there is nothing to configure here.
+# "on:" declares the EVENTS that start this pipeline.
 on:
+  # Event 1: somebody pushes commits to this repository.
   push:
-    # "**" matches every branch, including ones with a slash such as
-    # feature/foo. A single "*" would NOT match those.
+    # Only run for these branches. "**" means EVERY branch, including ones
+    # with a slash in the name such as feature/login. A single "*" would
+    # match "main" but NOT "feature/login" — that is the difference.
     branches: ["**"]
+  # Event 2: somebody opens or updates a pull request.
   pull_request:
+    # Only for PRs whose TARGET branch is main (i.e. code trying to merge
+    # into main). This is the gate that protects the production branch.
     branches: ["main"]
 
+# "jobs:" lists the units of work. Here there is exactly one.
 jobs:
+  # "security" is our own internal id for the job. Any name would work.
   security:
+    # "uses:" at JOB level (not step level) means: do not write steps here,
+    # run somebody else's entire workflow instead. Format is
+    #   OWNER/REPO/.github/workflows/FILE.yml@GIT_REF
+    # "@main" is the git ref — the shared repo's main branch. Pin it to a tag
+    # like @v1 in production so an upstream change cannot break your build.
     uses: eddiez0719/shared-workflows/.github/workflows/security-scan.yml@main
+    # Called workflows do NOT see this repo's secrets by default; they are a
+    # separate trust boundary. "inherit" forwards all of them in one line,
+    # instead of listing SONAR_TOKEN, SONAR_HOST_URL, ... one by one.
     secrets: inherit
+    # Notice there is no "with:" block. The shared workflow's defaults already
+    # describe this repo (Dockerfile at the root, Python 3.11, scan "."), so
+    # there is nothing left to configure. A repo that differs would override
+    # only the inputs it needs, e.g.  with: { bandit_enabled: false }
