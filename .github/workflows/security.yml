@@ -1,44 +1,39 @@
-# =============================================================================
-# CONSUMING WORKFLOW  (lives in the application repo: Docker_security)
+# ============================================================
+# THIS FILE LIVES IN THE APP REPO. It starts the security checks.
 #
-# This file contains NO scanning logic at all. Every scanner — hadolint,
-# Bandit, Trivy, SonarQube — is defined once in the shared repo
-# (eddiez0719/shared-workflows). This repo just says "run that gate on my
-# code", so the whole file is 3 meaningful lines.
-# =============================================================================
+# It does not contain any checks itself. All the checks are
+# written in another repo (shared-workflows). This file just
+# says: "run those checks on my code."
+# ============================================================
 
-# The name shown in the GitHub "Actions" tab for this pipeline.
+# The name you will see in the "Actions" tab on GitHub.
 name: security-pipeline
 
-# "on:" declares the EVENTS that start this pipeline.
+# "on" means: when should this run?
 on:
-  # Event 1: somebody pushes commits to this repository.
+  # Run it when someone pushes code.
   push:
-    # Only run for these branches. "**" means EVERY branch, including ones
-    # with a slash in the name such as feature/login. A single "*" would
-    # match "main" but NOT "feature/login" — that is the difference.
+    # Which branches. "**" means all branches.
+    # Careful: one star "*" would miss names with a slash,
+    # like feature/login. Two stars catch those too.
     branches: ["**"]
-  # Event 2: somebody opens or updates a pull request.
+  # Also run it when someone opens a pull request...
   pull_request:
-    # Only for PRs whose TARGET branch is main (i.e. code trying to merge
-    # into main). This is the gate that protects the production branch.
+    # ...but only a pull request that wants to go into main.
     branches: ["main"]
 
-# "jobs:" lists the units of work. Here there is exactly one.
+# "jobs" is the list of work to do. Here there is only one.
 jobs:
-  # "security" is our own internal id for the job. Any name would work.
+  # "security" is just a name we picked for this job.
   security:
-    # "uses:" at JOB level (not step level) means: do not write steps here,
-    # run somebody else's entire workflow instead. Format is
-    #   OWNER/REPO/.github/workflows/FILE.yml@GIT_REF
-    # "@main" is the git ref — the shared repo's main branch. Pin it to a tag
-    # like @v1 in production so an upstream change cannot break your build.
+    # Normally a job has "steps". This one does not.
+    # "uses" here means: run a whole workflow from another repo.
+    # The address is: owner / repo / path to the file @ branch
     uses: eddiez0719/shared-workflows/.github/workflows/security-scan.yml@main
-    # Called workflows do NOT see this repo's secrets by default; they are a
-    # separate trust boundary. "inherit" forwards all of them in one line,
-    # instead of listing SONAR_TOKEN, SONAR_HOST_URL, ... one by one.
+    # The other repo cannot see our passwords unless we send them.
+    # "inherit" sends all of them in one line, so we do not have
+    # to list each password by name.
     secrets: inherit
-    # Notice there is no "with:" block. The shared workflow's defaults already
-    # describe this repo (Dockerfile at the root, Python 3.11, scan "."), so
-    # there is nothing left to configure. A repo that differs would override
-    # only the inputs it needs, e.g.  with: { bandit_enabled: false }
+    # There is no "with" here on purpose.
+    # The shared file already has good default settings that fit
+    # this project, so we do not need to change anything.
