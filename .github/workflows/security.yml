@@ -1,0 +1,63 @@
+name: security-pipeline
+
+# This is the CONSUMING workflow, in the HealthTrack app repo.
+# - hadolint and Bandit run locally in this job list (no external server
+#   needed, so they run directly here).
+# - Trivy + SonarQube are NOT redefined here. They live once in the shared
+#   repo (eddiez0719/shared-workflows) and this job just calls that reusable
+#   workflow, passing this repo's secrets through.
+on:
+  push:
+    # "**" matches every branch, including ones with a slash such as
+    # feature/foo. A single "*" would NOT match those.
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+
+  # ---------------------------------------------------------------------
+  # Local jobs — no external server/account needed, run directly in THIS repo
+  # ---------------------------------------------------------------------
+  dockerfile-lint:
+    name: Lint Dockerfile (hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run hadolint
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile
+
+  python-sast:
+    name: Python SAST (Bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Bandit
+        run: pip install bandit==1.7.9
+
+      - name: Run Bandit
+        run: bandit -r . -ll
+
+  # ---------------------------------------------------------------------
+  # Reusable job — calls the shared repo's workflow instead of redefining
+  # Trivy + SonarQube here. One place to update the scan policy for every
+  # business repo that calls it.
+  # ---------------------------------------------------------------------
+  security-scan:
+    name: Trivy + SonarQube (via shared reusable workflow)
+    uses: eddiez0719/shared-workflows/.github/workflows/security-scan.yml@main
+    with:
+      severity: "CRITICAL,HIGH"
+      # Flip to true once a SonarQube server + secrets exist for this repo.
+      sonar_enabled: false
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
