@@ -33,6 +33,8 @@ jobs:
   python-sast:
     name: Python SAST (Bandit)
     runs-on: ubuntu-latest
+    # Sequential: only start once the Dockerfile lint has passed.
+    needs: dockerfile-lint
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +56,8 @@ jobs:
   security-scan:
     name: Trivy + SonarQube (via shared reusable workflow)
     uses: eddiez0719/shared-workflows/.github/workflows/security-scan.yml@main
+    # Sequential: last stage, runs only after Bandit has passed.
+    needs: python-sast
     with:
       severity: "CRITICAL,HIGH"
       # Flip to true once a SonarQube server + secrets exist for this repo.
